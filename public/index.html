@@ -1,73 +1,71 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Kickguessr - Level Mode</title>
+    <title>Kickguessr</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <style>
-        body { background: #1a1a1a; color: white; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; padding: 50px; }
-        .container { max-width: 600px; margin: auto; }
-        .level-badge { background: #00ff00; color: black; padding: 5px 15px; border-radius: 20px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
-        .path-box { background: #2a2a2a; padding: 30px; border-radius: 15px; margin: 20px auto; border-bottom: 4px solid #00ff00; font-size: 1.2rem; line-height: 1.6; }
-        input { padding: 12px; width: 70%; border-radius: 5px; border: none; font-size: 1rem; }
-        button { padding: 12px 25px; background: #00ff00; border: none; cursor: pointer; font-weight: bold; font-size: 1rem; transition: 0.3s; }
-        button:hover { background: #00cc00; transform: scale(1.05); }
-        #result-message { margin-top: 20px; font-weight: bold; min-height: 24px; }
+        body { background: #121212; color: white; font-family: sans-serif; text-align: center; padding: 20px; }
+        .card { background: #1e1e1e; padding: 25px; border-radius: 15px; max-width: 450px; margin: auto; border-bottom: 5px solid #00ff00; }
+        .path { font-size: 1.2rem; margin: 20px 0; color: #00ff00; font-weight: bold; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 20px; }
+        button { background: #333; color: white; border: none; padding: 15px; border-radius: 8px; cursor: pointer; font-size: 1rem; transition: 0.2s; }
+        button:hover { background: #444; }
+        .status { margin-top: 20px; font-weight: bold; height: 20px; }
+        .level-tag { background: #00ff00; color: black; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: bold; }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="card">
         <h1>⚽ Kickguessr</h1>
-        <div id="level-num" class="level-badge">Level 1</div>
-        <p>Identify the player by their transfers:</p>
-        
-        <div id="path-display" class="path-box">Loading Level...</div>
-        
-        <input type="text" id="guess-input" placeholder="Who is this player?" onkeyup="if(event.key==='Enter') checkGuess()">
-        <button onclick="checkGuess()">GUESS</button>
-        
-        <p id="result-message"></p>
+        <span id="level-tag" class="level-tag">LEVEL 1</span>
+        <p>Which player had this career path?</p>
+        <div id="path-display" class="path">Loading...</div>
+        <div id="btn-grid" class="grid"></div>
+        <div id="status" class="status"></div>
     </div>
 
     <script>
         let currentLevel = 1;
 
-        async function loadLevel(level) {
-            document.getElementById('result-message').innerText = "";
-            document.getElementById('guess-input').value = "";
-            const response = await fetch(`/api/level/${level}`);
-            
-            if (response.status === 404) {
-                document.getElementById('path-display').innerText = "🏆 YOU BEAT THE GAME!";
+        async function start() {
+            const res = await fetch(`/api/level/${currentLevel}`);
+            if (res.status === 404) {
+                document.querySelector('.card').innerHTML = "<h1>🏆 CHAMPION!</h1><p>You guessed them all!</p>";
                 return;
             }
-
-            const data = await response.json();
+            const data = await res.json();
             document.getElementById('path-display').innerText = data.path;
-            document.getElementById('level-num').innerText = `Level ${level}`;
+            document.getElementById('level-tag').innerText = `LEVEL ${currentLevel}`;
+            
+            const grid = document.getElementById('btn-grid');
+            grid.innerHTML = "";
+            data.choices.forEach(name => {
+                const b = document.createElement('button');
+                b.innerText = name;
+                b.onclick = () => check(name);
+                grid.appendChild(b);
+            });
         }
 
-        async function checkGuess() {
-            const guess = document.getElementById('guess-input').value;
-            const response = await fetch('/api/guess', {
+        async function check(name) {
+            const res = await fetch('/api/guess', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ guess: guess, id: currentLevel })
+                body: JSON.stringify({ guess: name, id: currentLevel })
             });
-            
-            const result = await response.json();
-            const msgElement = document.getElementById('result-message');
-            
+            const result = await res.json();
+            const status = document.getElementById('status');
             if (result.correct) {
-                msgElement.style.color = "#00ff00";
-                msgElement.innerText = "GOAL! Correct!";
+                status.innerText = "✅ CORRECT!";
+                status.style.color = "#00ff00";
                 currentLevel++;
-                setTimeout(() => loadLevel(currentLevel), 1500);
+                setTimeout(start, 1000);
             } else {
-                msgElement.style.color = "#ff4444";
-                msgElement.innerText = "MISS! Try again.";
+                status.innerText = "❌ WRONG!";
+                status.style.color = "#ff4444";
             }
         }
-
-        loadLevel(currentLevel);
+        start();
     </script>
 </body>
 </html>
