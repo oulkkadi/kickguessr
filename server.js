@@ -6,6 +6,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static('public'));
 
+// The Level Database
 const levels = [
   { id: 1, name: "Lionel Messi", path: "Barcelona -> PSG -> Inter Miami" },
   { id: 2, name: "Cristiano Ronaldo", path: "Sporting -> Man Utd -> Real Madrid -> Juventus -> Man Utd -> Al Nassr" },
@@ -19,6 +20,7 @@ const levels = [
   { id: 10, name: "Zlatan Ibrahimovic", path: "Malmo -> Ajax -> Juve -> Inter -> Barca -> Milan -> PSG -> Utd -> Galaxy -> Milan" }
 ];
 
+// API to get level data and 4 shuffled choices
 app.get('/api/level/:number', (req, res) => {
     const levelNum = parseInt(req.params.number);
     const levelData = levels.find(l => l.id === levelNum);
@@ -35,6 +37,7 @@ app.get('/api/level/:number', (req, res) => {
     }
 });
 
+// API to check if the clicked button is correct
 app.post('/api/guess', (req, res) => {
     const { guess, id } = req.body;
     const player = levels.find(p => p.id === id);
@@ -45,8 +48,9 @@ app.post('/api/guess', (req, res) => {
     }
 });
 
+// Serve the index.html file
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.listen(PORT, () => console.log(`Running on ${PORT}`));
+app.listen(PORT, () => console.log(`Kickguessr running on port ${PORT}`));
