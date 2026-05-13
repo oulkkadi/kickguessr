@@ -5,45 +5,92 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kickguessr - Football Quiz</title>
     <style>
-        body { 
-            background: linear-gradient(rgba(18, 18, 18, 0.85), rgba(18, 18, 18, 0.85)), 
-            url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2070&auto=format&fit=crop');
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            background: linear-gradient(rgba(18, 18, 18, 0.85), rgba(18, 18, 18, 0.85)),
+                url('https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;
-            color: white; 
-            font-family: sans-serif; 
+            color: white;
+            font-family: Arial, sans-serif;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
+            padding: 20px;
         }
-        .card { 
-            background: rgba(30, 30, 30, 0.95); 
-            padding: 30px; 
-            border-radius: 20px; 
-            max-width: 400px; 
-            width: 90%;
+
+        .card {
+            background: rgba(30, 30, 30, 0.95);
+            padding: 30px;
+            border-radius: 20px;
+            max-width: 440px;
+            width: 100%;
             border-bottom: 6px solid #00ff00;
             text-align: center;
         }
-        .path { 
-            font-size: 1.1rem; 
-            margin: 25px 0; 
-            color: #00ff00; 
-            font-weight: bold; 
+
+        h1 {
+            margin: 0 0 18px;
+        }
+
+        .path {
+            font-size: 1.1rem;
+            margin: 25px 0;
+            color: #00ff00;
+            font-weight: bold;
             background: #252525;
             padding: 15px;
             border-radius: 10px;
+            line-height: 1.4;
         }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-        button { 
-            background: #333; color: white; border: none; padding: 15px; 
-            border-radius: 10px; cursor: pointer; font-weight: bold; 
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 12px;
         }
-        button:hover { background: #444; border: 1px solid #00ff00; }
-        .level-tag { background: #00ff00; color: black; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+
+        button {
+            background: #333;
+            color: white;
+            border: 1px solid transparent;
+            padding: 15px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            min-height: 54px;
+        }
+
+        button:hover {
+            background: #444;
+            border-color: #00ff00;
+        }
+
+        .level-tag {
+            background: #00ff00;
+            color: black;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+
+        #status {
+            margin-top: 20px;
+            min-height: 24px;
+            font-weight: bold;
+        }
+
+        @media (max-width: 420px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
     </style>
 </head>
 <body>
@@ -52,44 +99,71 @@
         <span id="level-tag" class="level-tag">LEVEL 1</span>
         <div id="path-display" class="path">Loading...</div>
         <div id="btn-grid" class="grid"></div>
-        <div id="status" style="margin-top:20px; font-weight:bold;"></div>
+        <div id="status"></div>
     </div>
 
     <script>
         let currentLevel = 1;
+
         async function start() {
-            const res = await fetch(`/api/level/${currentLevel}`);
-            if (res.status === 404) {
-                document.querySelector('.card').innerHTML = "<h1>🏆 CHAMPION!</h1>";
-                return;
+            const status = document.getElementById('status');
+            status.innerText = '';
+
+            try {
+                const res = await fetch(`/api/level/${currentLevel}`);
+
+                if (res.status === 404) {
+                    document.querySelector('.card').innerHTML = '<h1>🏆 CHAMPION!</h1>';
+                    return;
+                }
+
+                if (!res.ok) {
+                    throw new Error('Could not load level');
+                }
+
+                const data = await res.json();
+                document.getElementById('path-display').innerText = data.path;
+                document.getElementById('level-tag').innerText = `LEVEL ${currentLevel}`;
+
+                const grid = document.getElementById('btn-grid');
+                grid.innerHTML = '';
+
+                data.choices.forEach((name) => {
+                    const button = document.createElement('button');
+                    button.innerText = name;
+                    button.onclick = () => check(name);
+                    grid.appendChild(button);
+                });
+            } catch (error) {
+                status.innerText = 'Could not load the quiz.';
             }
-            const data = await res.json();
-            document.getElementById('path-display').innerText = data.path;
-            document.getElementById('level-tag').innerText = `LEVEL ${currentLevel}`;
-            const grid = document.getElementById('btn-grid');
-            grid.innerHTML = "";
-            data.choices.forEach(name => {
-                const b = document.createElement('button');
-                b.innerText = name;
-                b.onclick = () => check(name);
-                grid.appendChild(b);
-            });
         }
+
         async function check(name) {
-            const res = await fetch('/api/guess', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ guess: name, id: currentLevel })
-            });
-            const result = await res.json();
-            if (result.correct) {
-                currentLevel++;
-                start();
-            } else {
-                document.getElementById('status').innerText = "❌ Try Again!";
-                setTimeout(() => { document.getElementById('status').innerText = ""; }, 1000);
+            const status = document.getElementById('status');
+
+            try {
+                const res = await fetch('/api/guess', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ guess: name, id: currentLevel })
+                });
+                const result = await res.json();
+
+                if (result.correct) {
+                    currentLevel++;
+                    start();
+                } else {
+                    status.innerText = '❌ Try Again!';
+                    setTimeout(() => {
+                        status.innerText = '';
+                    }, 1000);
+                }
+            } catch (error) {
+                status.innerText = 'Could not check your answer.';
             }
         }
+
         start();
     </script>
 </body>
